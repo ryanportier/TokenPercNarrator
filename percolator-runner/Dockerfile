@@ -39,7 +39,16 @@ COPY --from=cli-build /build/percolator-cli /opt/percolator-cli
 
 # Expose a "percolator" command for spawn("percolator", ...)
 # percolator-cli binary lives in its node_modules/.bin
-RUN ln -s /opt/percolator-cli/node_modules/.bin/percolator-cli /usr/local/bin/percolator
+RUN printf '%s\n' \
+'#!/bin/sh' \
+'set -e' \
+'if [ -x /opt/percolator-cli/node_modules/.bin/percolator ]; then exec /opt/percolator-cli/node_modules/.bin/percolator "$@"; fi' \
+'if [ -x /opt/percolator-cli/node_modules/.bin/percolator-cli ]; then exec /opt/percolator-cli/node_modules/.bin/percolator-cli "$@"; fi' \
+'echo "percolator bin not found in /opt/percolator-cli/node_modules/.bin" >&2' \
+'ls -la /opt/percolator-cli/node_modules/.bin >&2 || true' \
+'exit 127' \
+> /usr/local/bin/percolator && chmod +x /usr/local/bin/percolator
+
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -48,3 +57,4 @@ EXPOSE 3000
 
 # Start runner (it runs TS via tsx if your package.json uses tsx)
 CMD ["npm", "run", "start"]
+
