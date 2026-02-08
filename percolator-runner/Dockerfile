@@ -1,33 +1,50 @@
-# ---- build percolator-cli (rust) ----
-FROM rust:1.78-bookworm AS build
+# ---------------------------
+# Base (Node + pnpm)
+# ---------------------------
+FROM node:20-bookworm-slim AS base
+WORKDIR /app
+RUN corepack enable
 
+# ---------------------------
+# Build percolator-cli (pnpm)
+# ---------------------------
+FROM base AS cli-build
 WORKDIR /build
 
-# (A) Clona percolator-cli
-RUN git clone https://github.com/aeyakovenko/percolator-cli.git
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
+RUN git clone --depth 1 https://github.com/aeyakovenko/percolator-cli.git
 WORKDIR /build/percolator-cli
 
-# Build release
-RUN cargo build --release
+# Install + build (percolator-cli)
+RUN pnpm install --no-frozen-lockfile
+RUN pnpm build
 
-# ---- runtime (node) ----
-FROM node:20-bookworm-slim AS runtime
-
+# ---------------------------
+# Runner (your Express API)
+# ---------------------------
+FROM base AS runner
 WORKDIR /app
 
-# Copy percolator-cli binary
-COPY --from=build /build/percolator-cli/target/release/percolator /usr/local/bin/percolator
+# Install runner deps
+COPY package.json package-lock.json* ./
+RUN npm install
 
-# Install node deps
-COPY package.json /app/package.json
-RUN npm install --omit=dev
+# Copy runner source
+COPY src ./src
 
-# Copy source
-COPY src /app/src
+# Copy percolator-cli into image
+COPY --from=cli-build /build/percolator-cli /opt/percolator-cli
+
+# Expose a "percolator" command for spawn("percolator", ...)
+# percolator-cli binary lives in its node_modules/.bin
+RUN ln -s /opt/percolator-cli/node_modules/.bin/percolator-cli /usr/local/bin/percolator
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
+
+# Start runner (it runs TS via tsx if your package.json uses tsx)
 CMD ["npm", "run", "start"]
