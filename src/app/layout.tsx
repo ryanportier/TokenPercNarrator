@@ -3,23 +3,20 @@ import "@/styles/globals.css";
 import Starfield from "@/components/Starfield/Starfield";
 
 export const metadata: Metadata = {
-  title: "Token Pulse",
-  description: "Live viewer + narrator (paper).",
+  title: "PERCS Operator",
+  description: "Percolator read-only dashboard + Pulse terminal (paper mode).",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        {/* Starfield layer */}
         <div className="starfieldLayer">
           <Starfield />
         </div>
 
-        {/* Aura glow like Obscura */}
         <div className="aura" />
 
-        {/* App content */}
         <div className="container">{children}</div>
       </body>
     </html>
