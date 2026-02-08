@@ -4,21 +4,20 @@ type RunResult =
   | { ok: true; stdout: string }
   | { ok: false; error: string; code?: number; stderr?: string };
 
+const BIN = (process.env.PERCOLATOR_BIN || "percolator").trim();
+
 export function runPercolator(args: string[], timeoutMs = 12_000): Promise<RunResult> {
   return new Promise((resolve) => {
-    const p = spawn("percolator", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const p = spawn(BIN, args, { stdio: ["ignore", "pipe", "pipe"] });
 
     let stdout = "";
     let stderr = "";
 
     const t = setTimeout(() => {
-      try {
-        p.kill("SIGKILL");
-      } catch {}
+      try { p.kill("SIGKILL"); } catch {}
       resolve({ ok: false, error: "TIMEOUT" });
     }, timeoutMs);
 
-    // IMPORTANT: handle spawn errors (ENOENT, permission, etc.)
     p.on("error", (err: any) => {
       clearTimeout(t);
       resolve({ ok: false, error: "SPAWN_ERROR", stderr: String(err?.message || err) });
